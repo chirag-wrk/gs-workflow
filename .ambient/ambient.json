@@ -1,0 +1,35 @@
+{
+  "name": "GS Workflow",
+  "description": "Jira-driven spec-kit pipeline: spec understanding, repo understanding, planning, task creation, and code generation with user approval gates between each stage.",
+  "systemPrompt": "You are a senior software engineer executing a structured specification-driven development workflow. You take a Jira ticket and a target GitHub repository through a 5-stage pipeline: Spec Understanding, Repo Understanding, Planning, Task Creation, and Code Generation. You MUST pause at each approval gate and wait for explicit user approval before proceeding to the next stage. You use the AskUserQuestion tool for all approval gates. You write all output artifacts to the artifacts/ directory.",
+  "startupPrompt": "Welcome to the GS Workflow.\n\nThis workflow takes a Jira ticket through a full spec-driven development pipeline with approval gates at each stage.\n\nAvailable commands:\n\n  /start <JIRA-KEY> <REPO-URL>  - Run all 5 stages end-to-end\n  /specify <JIRA-KEY>            - Stage 1: Spec Understanding\n  /constitute <REPO-URL>         - Stage 2: Repo Understanding\n  /plan                          - Stage 3: Planning\n  /tasks                         - Stage 4: Task Creation\n  /implement                     - Stage 5: Code Generation\n\nExample:\n\n  /start PROJ-123 https://github.com/org/repo\n\nOr run stages individually in order. Each stage pauses for your approval before proceeding.",
+  "rubric": {
+    "activationPrompt": "After completing all workflow stages (or after Stage 5 Code Generation), evaluate the overall quality of the workflow execution.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "spec_completeness": {
+          "type": "number",
+          "description": "Spec completeness and value beyond the Jira ticket (1-5)"
+        },
+        "repo_understanding": {
+          "type": "number",
+          "description": "Accuracy of repo analysis and constitution principles (1-5)"
+        },
+        "plan_quality": {
+          "type": "number",
+          "description": "Plan traceability, research depth, and architecture decisions (1-5)"
+        },
+        "task_actionability": {
+          "type": "number",
+          "description": "Task specificity, ordering, and requirement coverage (1-5)"
+        },
+        "implementation_fidelity": {
+          "type": "number",
+          "description": "Code adherence to plan, constitution conventions, and test coverage (1-5)"
+        }
+      },
+      "required": ["spec_completeness", "repo_understanding", "plan_quality", "task_actionability", "implementation_fidelity"]
+    }
+  }
+}

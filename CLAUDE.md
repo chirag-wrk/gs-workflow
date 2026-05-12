@@ -1,0 +1,248 @@
+# GS Workflow - Spec-Driven Development from Jira
+
+You are executing a structured, 5-stage specification-driven development pipeline. A Jira ticket is your input. A pull request with implemented code is your output. Between each stage there is a **mandatory user approval gate** - you MUST NOT proceed until the user explicitly approves.
+
+## Available Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/start <JIRA-KEY> <REPO-URL>` | Run all 5 stages end-to-end |
+| `/specify <JIRA-KEY>` | Stage 1: Spec Understanding |
+| `/constitute <REPO-URL>` | Stage 2: Repo Understanding |
+| `/plan` | Stage 3: Planning |
+| `/tasks` | Stage 4: Task Creation |
+| `/implement` | Stage 5: Code Generation |
+
+Users can run `/start` to execute the full pipeline, or run individual stages in order for more control.
+
+## Workspace Conventions
+
+- **All output artifacts** go under `artifacts/` (the Ambient workspace artifacts directory).
+- **Templates** are in `templates/` relative to this workflow directory. Read them before generating each artifact.
+- **Jira access** is provided by the platform's Jira MCP integration (mcp-atlassian). Use the available Jira tools to fetch ticket details. Do NOT ask the user to paste ticket content.
+- **GitHub repo access** is provided by the platform. The user provides the repo URL and it is available under `/workspace/repos/`. Use `git`, `gh`, and filesystem tools to analyze it.
+
+## Approval Gate Protocol
+
+Every stage ends with a gate. The gate protocol is identical for all stages:
+
+1. **Write** the output artifact to `artifacts/<filename>`.
+2. **Summarize** the key points of the artifact to the user (do not dump the entire file - highlight the important decisions, sections, and any items that need attention).
+3. **Ask for approval** using the `AskUserQuestion` tool:
+   - Present two options: **Approve** and **Reject (provide feedback)**.
+   - If the user provides feedback in the session prompt instead of using the tool response, treat that as a rejection with feedback.
+4. **On Approve**: Proceed to the next stage.
+5. **On Reject**: Read the user's feedback carefully. Revise the artifact addressing every point raised. Rewrite the file. Present the updated summary. Ask for approval again. Repeat until approved. There is no iteration limit - keep refining until the user is satisfied.
+
+---
+
+## Stage 1: Spec Understanding
+
+**Input**: Jira ticket key (e.g., PROJ-123)
+**Output**: `artifacts/specs.md`
+**Template**: `templates/spec-template.md`
+
+### Process
+
+1. Fetch the Jira ticket using the available Jira MCP tools. Extract:
+   - Title and description
+   - Acceptance criteria
+   - Priority and labels
+   - Linked issues and subtasks
+   - Comments with relevant context
+   - Attachments (note their existence)
+
+2. Read `templates/spec-template.md` to understand the required output structure.
+
+3. Produce `artifacts/specs.md` following the template structure:
+   - **User Scenarios & Testing**: Extract user stories from the Jira ticket. Assign priorities (P1, P2, P3). Each story must be independently testable with acceptance scenarios in Given/When/Then format.
+   - **Requirements**: Derive functional requirements (FR-001, FR-002, ...) from the ticket description and acceptance criteria. Every requirement must be testable and unambiguous.
+   - **Key Entities**: Identify data entities if the feature involves data.
+   - **Success Criteria**: Define measurable, technology-agnostic outcomes (SC-001, SC-002, ...).
+   - **Assumptions**: Document reasonable defaults for anything the ticket does not specify.
+
+4. If the Jira ticket is vague or missing critical information, make informed guesses and document them in Assumptions. Use a maximum of 3 `[NEEDS CLARIFICATION]` markers, only for decisions that significantly impact scope.
+
+5. Run the Spec Quality Validation:
+   - No implementation details (languages, frameworks, APIs).
+   - Focused on user value and business needs.
+   - Requirements are testable and unambiguous.
+   - Success criteria are measurable and technology-agnostic.
+   - All mandatory sections completed.
+   - Maximum 3 NEEDS CLARIFICATION markers.
+   - If validation fails, fix the issues (up to 3 iterations) before presenting to the user.
+
+6. **GATE 1**: Present summary and ask for approval.
+
+---
+
+## Stage 2: Repo Understanding
+
+**Input**: GitHub repo URL + approved `artifacts/specs.md`
+**Output**: `artifacts/constitution.md`
+**Template**: `templates/constitution-template.md`
+
+### Process
+
+1. Analyze the target repository. Read these files (when they exist):
+   - `README.md` - project overview, purpose, setup instructions
+   - `AGENTS.md` or `CLAUDE.md` - AI agent conventions and instructions
+   - `CONTRIBUTING.md` - contribution guidelines
+   - Build/dependency files (`package.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `Makefile`, etc.)
+   - Directory structure (run `find` or `ls -R` at top levels)
+   - Test infrastructure (test directories, test config files)
+   - CI/CD configuration (`.github/workflows/`, `Jenkinsfile`, etc.)
+   - Linter/formatter config (`.eslintrc`, `.prettierrc`, `golangci-lint.yaml`, etc.)
+
+2. From this analysis, determine:
+   - **Tech stack**: Language, framework, major dependencies, versions
+   - **Project type**: Library, CLI, web service, mobile app, monorepo, etc.
+   - **Architecture patterns**: MVC, microservices, serverless, etc.
+   - **Testing approach**: Unit, integration, e2e frameworks and conventions
+   - **Code conventions**: Naming, formatting, linting rules, commit conventions
+   - **Existing patterns**: How similar features were implemented before (look at recent PRs or feature directories)
+
+3. Read `templates/constitution-template.md` for the output structure.
+
+4. Cross-reference the repo analysis with `artifacts/specs.md` to identify:
+   - Which existing components/modules the new feature will touch
+   - Whether the feature aligns with existing architecture or needs new patterns
+   - Any conflicts between the spec requirements and repo conventions
+
+5. Produce `artifacts/constitution.md` following the template:
+   - **Core Principles**: Derive principles from the repo's actual conventions (not generic best practices). Each principle should be observable in the codebase.
+   - **Additional Constraints**: Tech stack requirements, compliance standards, deployment policies drawn from the repo.
+   - **Development Workflow**: Code review requirements, testing gates, deployment approval process as practiced in this repo.
+   - **Governance**: How this constitution relates to the repo's existing AGENTS.md/CLAUDE.md/CONTRIBUTING.md.
+
+6. **GATE 2**: Present summary and ask for approval.
+
+---
+
+## Stage 3: Planning
+
+**Input**: Approved `artifacts/specs.md` + `artifacts/constitution.md`
+**Output**: `artifacts/plan.md`
+**Template**: `templates/plan-template.md`
+
+### Process
+
+1. Read both approved artifacts and `templates/plan-template.md`.
+
+2. Produce `artifacts/plan.md` following the template:
+   - **Summary**: Primary requirement + technical approach.
+   - **Technical Context**: Language/version, dependencies, storage, testing framework, target platform, project type, performance goals, constraints, scale - derived from `constitution.md`.
+   - **Constitution Check**: Validate the plan against each principle in `constitution.md`. If any principle is violated, document the justification in the Complexity Tracking table.
+   - **Project Structure**: Concrete file/directory layout for this feature, matching the repo's existing structure from `constitution.md`.
+
+3. Execute planning phases:
+   - **Phase 0 - Research**: For each NEEDS CLARIFICATION or unknown in the Technical Context, research and resolve it. Produce findings as decisions with rationale and alternatives considered. Write these into the plan.
+   - **Phase 1 - Design**: Extract entities from the spec into a data model section. Define interface contracts appropriate to the project type. Document the architecture decisions.
+
+4. Every technical decision must trace back to either the spec requirements or the constitution principles. No orphan decisions.
+
+5. **GATE 3**: Present summary and ask for approval.
+
+---
+
+## Stage 4: Task Creation
+
+**Input**: Approved `artifacts/plan.md` + `artifacts/specs.md` + `artifacts/constitution.md`
+**Output**: `artifacts/tasks.md`
+**Template**: `templates/tasks-template.md`
+
+### Process
+
+1. Read all three approved artifacts and `templates/tasks-template.md`.
+
+2. Produce `artifacts/tasks.md` following the template structure and these rules:
+
+   **Task format** (every task MUST follow this exactly):
+   ```
+   - [ ] [TaskID] [P?] [Story?] Description with file path
+   ```
+   - `- [ ]` checkbox (required)
+   - `T001`, `T002`, ... sequential IDs (required)
+   - `[P]` if parallelizable (optional)
+   - `[US1]`, `[US2]`, ... user story label for story-phase tasks (required in story phases)
+   - Description with exact file path (required)
+
+3. Organize tasks into phases:
+   - **Phase 1: Setup** - Project initialization, dependencies, configuration.
+   - **Phase 2: Foundational** - Blocking prerequisites that ALL user stories depend on. No story work can begin until this phase completes.
+   - **Phase 3+: User Stories** - One phase per user story, in priority order (P1, P2, P3, ...) from `specs.md`. Each phase includes: story goal, independent test criteria, implementation tasks.
+   - **Final Phase: Polish** - Cross-cutting concerns, documentation, cleanup.
+
+4. Include:
+   - Dependencies & Execution Order section
+   - User Story Dependencies section
+   - Parallel Opportunities section
+   - Implementation Strategy section (MVP first, incremental delivery)
+
+5. Validate:
+   - Every functional requirement from `specs.md` has at least one task.
+   - Every task references a concrete file path from `plan.md`.
+   - No task is too vague for an LLM to execute without additional context.
+
+6. **GATE 4**: Present summary including total task count, tasks per user story, parallel opportunities, and suggested MVP scope. Ask for approval.
+
+---
+
+## Stage 5: Code Generation
+
+**Input**: All approved artifacts (`specs.md`, `constitution.md`, `plan.md`, `tasks.md`)
+**Output**: Code changes on a feature branch + draft PR
+
+### Process
+
+1. Read all approved artifacts from `artifacts/`.
+
+2. Create a feature branch in the target repo (naming convention from `constitution.md`, or `feature/<jira-key>-<short-name>`).
+
+3. Execute tasks phase-by-phase from `tasks.md`:
+   - Complete each phase before moving to the next.
+   - Respect dependencies: sequential tasks in order, parallel `[P]` tasks can run together.
+   - For each completed task, mark it as `[x]` in `artifacts/tasks.md`.
+   - Report progress after each completed phase.
+
+4. Implementation rules:
+   - Follow code conventions from `constitution.md`.
+   - Match existing patterns in the repository.
+   - If a task fails, halt and report the error with context. Suggest a fix. Wait for user input before continuing.
+
+5. After all tasks are complete:
+   - Run any test suites referenced in `constitution.md`.
+   - Verify the implementation matches the spec requirements.
+   - Commit changes with a descriptive message referencing the Jira ticket.
+   - Create a draft pull request.
+
+6. Produce a final report:
+   - Tasks completed vs. planned.
+   - Files changed.
+   - Test results.
+   - PR link.
+   - Any deviations from the plan and why.
+
+No approval gate after Stage 5 - the PR itself serves as the review artifact.
+
+After producing the final report, read `.ambient/rubric.md` and evaluate the overall workflow quality by calling the `evaluate_rubric` tool with per-criterion scores and reasoning.
+
+---
+
+## Error Handling
+
+- If the Jira ticket cannot be fetched, ask the user to verify the ticket key and Jira integration status.
+- If the GitHub repo cannot be accessed, ask the user to verify the URL and that the repo is available in the session.
+- If any stage produces output that fails internal validation after 3 iterations, present the issues to the user and ask how to proceed.
+- Never silently skip a stage or gate.
+- Never proceed past a gate without explicit user approval.
+
+## File Reference
+
+| Stage | Output File | Template |
+|-------|------------|----------|
+| 1. Spec Understanding | `artifacts/specs.md` | `templates/spec-template.md` |
+| 2. Repo Understanding | `artifacts/constitution.md` | `templates/constitution-template.md` |
+| 3. Planning | `artifacts/plan.md` | `templates/plan-template.md` |
+| 4. Task Creation | `artifacts/tasks.md` | `templates/tasks-template.md` |
+| 5. Code Generation | Feature branch + PR | - |
