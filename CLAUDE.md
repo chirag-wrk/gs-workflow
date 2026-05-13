@@ -1,19 +1,20 @@
 # GS Workflow - Spec-Driven Development from Jira
 
-You are executing a structured, 5-stage specification-driven development pipeline. A Jira ticket is your input. A pull request with implemented code is your output. Between each stage there is a **mandatory user approval gate** - you MUST NOT proceed until the user explicitly approves.
+You are executing a structured, 6-stage specification-driven development pipeline (Stage 0 through Stage 5). A Jira ticket is your input. Implemented code is your output. Stage 0 is an automated quality gate; Stages 1-4 each have a **mandatory user approval gate** - you MUST NOT proceed until the user explicitly approves.
 
 ## Available Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/start <JIRA-KEY> <REPO-URL>` | Run all 5 stages end-to-end |
+| `/validate <JIRA-KEY> [THRESHOLD] [DOC-TYPE]` | Stage 0: Spec Validation (quality gate) |
+| `/start <JIRA-KEY> <REPO-URL>` | Run all stages end-to-end (0 through 5) |
 | `/specify <JIRA-KEY>` | Stage 1: Spec Understanding |
 | `/constitute <REPO-URL>` | Stage 2: Repo Understanding |
 | `/plan` | Stage 3: Planning |
 | `/tasks` | Stage 4: Task Creation |
 | `/implement` | Stage 5: Code Generation |
 
-Users can run `/start` to execute the full pipeline, or run individual stages in order for more control.
+Users can run `/start` to execute the full pipeline, or run individual stages in order for more control. `/validate` can be run standalone to check a ticket before committing to the full pipeline.
 
 ## Workspace Conventions
 
@@ -36,6 +37,103 @@ Every stage ends with a gate. The gate protocol is identical for all stages:
 
 ---
 
+## Stage 0: Spec Validation
+
+**Input**: Jira ticket key (e.g., PROJ-123), optional pass_threshold (default 80), optional doc_type (`jira|prd|enhancement`)
+**Output**: `artifacts/validation.json`
+**Template**: `templates/validation-template.md`
+
+Stage 0 is a quality gate that validates the **raw Jira ticket** before the agent invests effort producing `specs.md`. It scores the ticket against completeness and quality heuristics and blocks the pipeline if the spec is too vague, incomplete, or self-contradictory.
+
+### Evaluation Prompt
+
+When executing Stage 0, adopt the following role and instructions:
+
+> You are the "Specification Validator": a quality gate for software specs before engineering or agentic codegen.
+>
+> **Mission**: Reduce rework by catching ambiguous, incomplete, inconsistent, or un-testable requirements early. Make gaps explicit as questions and actionable edits — do not invent product behavior.
+>
+> **Why this matters**: Planning/codegen agents fail when specs omit scope boundaries, testable acceptance criteria, security/RBAC implications, webhook/TLS behavior, upgrade semantics, or concrete API contracts. Prefer marking "missing" over guessing.
+>
+> **Operating constraints**:
+> - Do not fabricate repositories, APIs, ports, behaviors, timelines, or dependencies not stated in the spec.
+> - Universal Kubernetes facts may be stated ONLY as neutral "implementation note" suggestions inside `quality_issues.suggestion` — not as assumed spec facts.
+> - cert-manager ecosystem items are mandatory to evaluate when the spec touches operators/operands/CRDs/webhooks/TLS/RBAC/networking/monitoring/upgrades/OpenShift/MicroShift/Hypershift.
+>
+> **Scoring posture**: Strict on testability, consistency, operational/security completeness. Fair on writing style.
+
+### Process
+
+1. Fetch the Jira ticket using the available Jira MCP tools. Extract:
+   - Title and description
+   - Acceptance criteria
+   - Epic link and reporter
+   - Priority and labels
+   - Linked issues and subtasks
+   - Comments with relevant context
+
+2. Read `templates/validation-template.md` for the JSON schema and few-shot calibration examples.
+
+3. Evaluate the ticket text against two dimensions:
+
+   **A) Completeness Audit (60% weight, configurable)**
+
+   Penalize heavily if any core pillar is absent or cannot be verified from the text:
+   - Context & Motivation (why, impact, pain)
+   - User Personas / Actors (explicit roles)
+   - Acceptance Criteria & Edge Cases (explicit "done", negatives, dependency failures) OR an equivalent Test Plan with traceable scenarios
+   - Scope Boundaries & Dependencies (out-of-scope, blockers, migrations, cross-team)
+   - Impacted Repositories / Systems (explicit repo/service names; if absent, add to `missing_elements`)
+
+   **cert-manager ecosystem pillars** — mandatory when the spec mentions any of: `cert-manager`, `CRD`, `operator`, `webhook`, `TLS`, `RBAC`, `OpenShift`, `MicroShift`, `Hypershift`, `certificate`, `networking`, `monitoring`. If none are mentioned, set all booleans to `true` and `gaps` to empty. If triggered, evaluate:
+   - API & CRD lifecycle (scope, defaults, immutability, validation, migration/deprecation)
+   - Install / uninstall / reconcile semantics (including CR delete behavior)
+   - RBAC & blast radius (cluster-wide writes, secrets, cross-namespace effects)
+   - Webhooks & TLS (how secured, issuance path, failure modes)
+   - Platform matrix (OpenShift vs MicroShift; FeatureGates/FeatureSets; Hypershift/hosted)
+   - Observability (metrics, readiness, status conditions)
+   - Upgrade / downgrade / version skew
+
+   If any core completeness pillar is missing, cap `completeness_score` at 60.
+
+   **B) Quality Audit (40% weight, configurable) — INVEST heuristics**
+
+   Flag with direct quotes and concrete rewrite guidance:
+   - **Ambiguity**: unquantified adjectives (fast, scalable, secure, user-friendly, seamless) without attached metrics
+   - **Testability**: ACs that cannot map to automated tests; missing Given/When/Then for user-visible flows
+   - **Sizing**: multiple independent deliverables in one ticket; recommend split into Epic
+   - **Consistency**: motivation/user stories/goals/API/tests contradict each other
+
+4. Produce `artifacts/validation.json` matching the exact key schema from `templates/validation-template.md`.
+
+   Scoring math:
+   - `overall_score` = `round(0.6 * completeness_score + 0.4 * quality_score)` (or user-provided weights, echoed in `metadata.weights_applied`)
+   - `PASS`: overall_score >= pass_threshold AND no items in `blockers`
+   - `NEEDS_REVISION`: overall_score < pass_threshold OR non-fatal gaps present
+   - `BLOCKED`: severe contradictions that would cause unsafe/wrong implementation (mutually exclusive behaviors, API described two ways, uninstall semantics contradict CR lifecycle) — even if scores are high
+
+5. Output formatting:
+   - Write the JSON to `artifacts/validation.json`.
+   - If `output_mode=json_plus_summary` (default): present up to 8 bullet lines of executive summary to the user after writing the JSON.
+   - If `output_mode=json_only`: present only the score and status to the user.
+
+### Gate Behavior
+
+Stage 0's gate differs from other stages:
+
+- **PASS (overall_score >= threshold, no blockers)**: Present summary, auto-proceed to Stage 1. No user approval needed.
+- **NEEDS_REVISION (overall_score < threshold or non-fatal gaps)**: Present the missing elements, quality issues, and non_blockers to the user. Ask via `AskUserQuestion`: "Proceed to Stage 1 anyway?" or "Stop and revise the ticket?" If the user chooses to stop, offer to comment on the Jira ticket with the feedback.
+- **BLOCKED (blockers present)**: Halt the pipeline. Present the blocking issues. Do NOT offer a proceed option. Offer to comment on the Jira ticket with the blockers.
+
+### Jira Comment (conditional, opt-in)
+
+On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira ticket with feedback?" as a secondary question. If approved, comment on the ticket via MCP tools tagging the reporter with:
+- `missing_elements` as actionable bullet points
+- `quality_issues` with quotes and rewrite suggestions
+- `blockers` as critical items requiring resolution
+
+---
+
 ## Stage 1: Spec Understanding
 
 **Input**: Jira ticket key (e.g., PROJ-123)
@@ -52,18 +150,20 @@ Every stage ends with a gate. The gate protocol is identical for all stages:
    - Comments with relevant context
    - Attachments (note their existence)
 
-2. Read `templates/spec-template.md` to understand the required output structure.
+2. Read `artifacts/validation.json` if it exists (produced by Stage 0). Use the validation results to inform spec generation: address any `missing_elements` by making explicit assumptions in the Assumptions section, address `quality_issues` by ensuring the generated spec resolves them, and note any `non_blockers` as areas for the user to consider during Gate 1 approval.
 
-3. Produce `artifacts/specs.md` following the template structure:
+3. Read `templates/spec-template.md` to understand the required output structure.
+
+4. Produce `artifacts/specs.md` following the template structure:
    - **User Scenarios & Testing**: Extract user stories from the Jira ticket. Assign priorities (P1, P2, P3). Each story must be independently testable with acceptance scenarios in Given/When/Then format.
    - **Requirements**: Derive functional requirements (FR-001, FR-002, ...) from the ticket description and acceptance criteria. Every requirement must be testable and unambiguous.
    - **Key Entities**: Identify data entities if the feature involves data.
    - **Success Criteria**: Define measurable, technology-agnostic outcomes (SC-001, SC-002, ...).
    - **Assumptions**: Document reasonable defaults for anything the ticket does not specify.
 
-4. If the Jira ticket is vague or missing critical information, make informed guesses and document them in Assumptions. Use a maximum of 3 `[NEEDS CLARIFICATION]` markers, only for decisions that significantly impact scope.
+5. If the Jira ticket is vague or missing critical information, make informed guesses and document them in Assumptions. Use a maximum of 3 `[NEEDS CLARIFICATION]` markers, only for decisions that significantly impact scope.
 
-5. Run the Spec Quality Validation:
+6. Run the Spec Quality Validation:
    - No implementation details (languages, frameworks, APIs).
    - Focused on user value and business needs.
    - Requirements are testable and unambiguous.
@@ -72,7 +172,7 @@ Every stage ends with a gate. The gate protocol is identical for all stages:
    - Maximum 3 NEEDS CLARIFICATION markers.
    - If validation fails, fix the issues (up to 3 iterations) before presenting to the user.
 
-6. **GATE 1**: Present summary and ask for approval.
+7. **GATE 1**: Present summary and ask for approval.
 
 ---
 
@@ -191,39 +291,48 @@ Every stage ends with a gate. The gate protocol is identical for all stages:
 ## Stage 5: Code Generation
 
 **Input**: All approved artifacts (`specs.md`, `constitution.md`, `plan.md`, `tasks.md`)
+**Output**: Code changes in the target repo
+<!-- TODO: Uncomment when ready to enable branch/PR creation
 **Output**: Code changes on a feature branch + draft PR
+-->
 
 ### Process
 
 1. Read all approved artifacts from `artifacts/`.
 
+<!-- TODO: Uncomment when ready to enable branch/PR creation
 2. Create a feature branch in the target repo (naming convention from `constitution.md`, or `feature/<jira-key>-<short-name>`).
+-->
 
-3. Execute tasks phase-by-phase from `tasks.md`:
+2. Execute tasks phase-by-phase from `tasks.md`:
    - Complete each phase before moving to the next.
    - Respect dependencies: sequential tasks in order, parallel `[P]` tasks can run together.
    - For each completed task, mark it as `[x]` in `artifacts/tasks.md`.
    - Report progress after each completed phase.
 
-4. Implementation rules:
+3. Implementation rules:
    - Follow code conventions from `constitution.md`.
    - Match existing patterns in the repository.
    - If a task fails, halt and report the error with context. Suggest a fix. Wait for user input before continuing.
 
-5. After all tasks are complete:
+4. After all tasks are complete:
    - Run any test suites referenced in `constitution.md`.
    - Verify the implementation matches the spec requirements.
+   <!-- TODO: Uncomment when ready to enable branch/PR creation
    - Commit changes with a descriptive message referencing the Jira ticket.
    - Create a draft pull request.
+   -->
 
-6. Produce a final report:
+5. Produce a final report:
    - Tasks completed vs. planned.
    - Files changed.
    - Test results.
+   <!-- TODO: Uncomment when ready to enable branch/PR creation
    - PR link.
+   -->
    - Any deviations from the plan and why.
 
-No approval gate after Stage 5 - the PR itself serves as the review artifact.
+No approval gate after Stage 5.
 
 After producing the final report, read `.ambient/rubric.md` and evaluate the overall workflow quality by calling the `evaluate_rubric` tool with per-criterion scores and reasoning.
 
@@ -241,8 +350,12 @@ After producing the final report, read `.ambient/rubric.md` and evaluate the ove
 
 | Stage | Output File | Template |
 |-------|------------|----------|
+| 0. Spec Validation | `artifacts/validation.json` | `templates/validation-template.md` |
 | 1. Spec Understanding | `artifacts/specs.md` | `templates/spec-template.md` |
 | 2. Repo Understanding | `artifacts/constitution.md` | `templates/constitution-template.md` |
 | 3. Planning | `artifacts/plan.md` | `templates/plan-template.md` |
 | 4. Task Creation | `artifacts/tasks.md` | `templates/tasks-template.md` |
+| 5. Code Generation | Code changes in repo | - |
+<!-- TODO: Uncomment when ready to enable branch/PR creation
 | 5. Code Generation | Feature branch + PR | - |
+-->

@@ -1,5 +1,5 @@
 ---
-description: "Stage 5: Execute implementation tasks, create a feature branch, and open a draft PR."
+description: "Stage 5: Execute implementation tasks in the target repo."
 ---
 
 ## Prerequisites
@@ -25,8 +25,12 @@ Run the prior stages first: /specify, /constitute, /plan, /tasks.
 Follow Stage 5 (Code Generation) from `CLAUDE.md`:
 
 1. Read all approved artifacts from `artifacts/`.
+<!-- TODO: Uncomment when ready to enable branch/PR creation
 2. Create a feature branch in the target repo.
-3. Execute tasks phase-by-phase per the Stage 5 instructions in CLAUDE.md.
-4. Commit, push, and create a draft PR.
-5. Produce a final report (tasks completed, files changed, test results, PR link, deviations).
-6. After reporting, evaluate quality using `evaluate_rubric` per `.ambient/rubric.md`.
+-->
+2. Execute tasks phase-by-phase per the Stage 5 instructions in CLAUDE.md.
+<!-- TODO: Uncomment when ready to enable branch/PR creation
+3. Commit, push, and create a draft PR.
+-->
+3. Produce a final report (tasks completed, files changed, test results, deviations).
+4. After reporting, evaluate quality using `evaluate_rubric` per `.ambient/rubric.md`.

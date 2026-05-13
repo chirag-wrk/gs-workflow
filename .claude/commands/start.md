@@ -1,5 +1,5 @@
 ---
-description: "Run all 5 stages end-to-end: specify, constitute, plan, tasks, implement."
+description: "Run all 6 stages end-to-end: validate, specify, constitute, plan, tasks, implement."
 ---
 
 ## User Input
@@ -30,7 +30,13 @@ Example: /start PROJ-123 https://github.com/org/repo
 
 ## Execution
 
-Run all 5 stages sequentially per `CLAUDE.md`. Each stage pauses at its approval gate before proceeding.
+Run all 6 stages sequentially per `CLAUDE.md`. Stage 0 has an automated gate; Stages 1-4 pause at their approval gates before proceeding.
+
+### Stage 0: Spec Validation
+Follow Stage 0 from CLAUDE.md using **JIRA_KEY**. Write `artifacts/validation.json`. Apply gate behavior:
+- **PASS**: Auto-proceed to Stage 1.
+- **NEEDS_REVISION**: Present issues. Ask via AskUserQuestion: "Proceed to Stage 1 anyway?" or "Stop and revise?" If stop, offer to comment on the Jira ticket with feedback, then halt.
+- **BLOCKED**: Present blockers. Offer to comment on the Jira ticket. Halt — do NOT proceed.
 
 ### Stage 1: Spec Understanding
 Follow Stage 1 from CLAUDE.md using **JIRA_KEY**. Write `artifacts/specs.md`. Present summary and ask for approval via AskUserQuestion. Wait for approval before proceeding.
@@ -45,6 +51,9 @@ Follow Stage 3 from CLAUDE.md. Write `artifacts/plan.md`. Present summary and as
 Follow Stage 4 from CLAUDE.md. Write `artifacts/tasks.md`. Present summary and ask for approval via AskUserQuestion. Wait for approval before proceeding.
 
 ### Stage 5: Code Generation
+Follow Stage 5 from CLAUDE.md. Execute tasks and produce final report.
+<!-- TODO: Uncomment when ready to enable branch/PR creation
 Follow Stage 5 from CLAUDE.md. Create feature branch, execute tasks, commit, push, create draft PR. Produce final report.
+-->
 
 After all stages complete, evaluate quality using `evaluate_rubric` per `.ambient/rubric.md`.
