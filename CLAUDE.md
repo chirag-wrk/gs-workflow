@@ -272,40 +272,50 @@ Stage 3 produces a Technical Implementation Plan — a 9-section artifact (Secti
 **Output**: `artifacts/tasks.md`
 **Template**: `templates/tasks-template.md`
 
+Stage 4 produces an Execution Backlog — a 6-section artifact (Sections 0-5) that decomposes the Technical Implementation Plan into granular, dependency-ordered, agent-routed tasks with per-task payloads for downstream code generation. The output is purely organizational — this stage does NOT write production code.
+
+### Role Prompt
+
+When executing Stage 4, adopt the following role and instructions:
+
+> You are the "Sub-Task Creation Agent" operating in Technical Project Manager mode.
+>
+> **Mission**: Convert validated requirements + a technical implementation plan into an ordered execution backlog (`tasks.md`) suitable for a downstream code generation / implementation phase. You produce tasks and sub-tasks with explicit dependencies, agent routing, complexity estimation, and per-task specification payloads. You do NOT write production code, patches, or diffs.
+>
+> **Input precedence** on conflicts:
+> 1. `constitution.md` (guardrails; non-negotiable unless it explicitly defers)
+> 2. `specs.md` (business/technical requirements + acceptance criteria)
+> 3. `plan.md` (phases, contracts, sequencing)
+> 4. `repo-assessment.md` (for file-path facts and risk flags)
+> 5. `agents.md` (routing + tool constraints, if available)
+>
+> **Forbidden outputs**: No source code (including "example code"), no patch hunks, no shell commands that mutate systems. No inventing file paths not present in inputs.
+
+### agents.md Policy
+
+If `agents.md` was found in the target repo during Stage 2, use its agent IDs for task routing and set `AgentRoutingMode: PROVIDED` in the backlog header. If `agents.md` was not available, set `AgentRoutingMode: PROVISIONAL` and use these provisional agent IDs exactly: `API_Agent`, `OperatorController_Agent`, `ManifestsBindata_Agent`, `WebhookTLS_Agent`, `RBACSecurity_Agent`, `OLMRelease_Agent`, `Testing_Agent`, `Docs_Agent`.
+
 ### Process
 
-1. Read all four approved artifacts and `templates/tasks-template.md`. Use `repo-assessment.md` Target Files to ensure every task references concrete file paths, and its Risks section to flag tasks that touch unverified areas.
+1. Read all four approved artifacts (`artifacts/specs.md`, `artifacts/constitution.md`, `artifacts/plan.md`, `artifacts/repo-assessment.md`) and `templates/tasks-template.md`.
 
-2. Produce `artifacts/tasks.md` following the template structure and these rules:
+2. **Section 0 — Input Coverage Checklist**: Map every spec goal (FR-xx, SC-xx, AC-xx) and every plan phase (from `plan.md` Section 5) to at least one task. This proves nothing was dropped during decomposition.
 
-   **Task format** (every task MUST follow this exactly):
-   ```
-   - [ ] [TaskID] [P?] [Story?] Description with file path
-   ```
-   - `- [ ]` checkbox (required)
-   - `T001`, `T002`, ... sequential IDs (required)
-   - `[P]` if parallelizable (optional)
-   - `[US1]`, `[US2]`, ... user story label for story-phase tasks (required in story phases)
-   - Description with exact file path (required)
+3. **Granular decomposition**: Expand each plan phase into discrete tasks at file/package granularity using target files from `repo-assessment.md` Section 1. If the repo assessment was PARTIAL, mark affected tasks `Evidence: PARTIAL` and include a discovery sub-task. For substantive implementation tasks, include explicit follow-on tasks for verification (unit/integration/e2e) where the constitution or spec requires tests.
 
-3. Organize tasks into phases:
-   - **Phase 1: Setup** - Project initialization, dependencies, configuration.
-   - **Phase 2: Foundational** - Blocking prerequisites that ALL user stories depend on. No story work can begin until this phase completes.
-   - **Phase 3+: User Stories** - One phase per user story, in priority order (P1, P2, P3, ...) from `specs.md`. Each phase includes: story goal, independent test criteria, implementation tasks.
-   - **Final Phase: Polish** - Cross-cutting concerns, documentation, cleanup.
+4. **Agent routing**: Map every task to exactly one agent from `agents.md` (or provisional IDs). If a task mixes concerns across agents, split it into separate tasks — one per agent.
 
-4. Include:
-   - Dependencies & Execution Order section
-   - User Story Dependencies section
-   - Parallel Opportunities section
-   - Implementation Strategy section (MVP first, incremental delivery)
+5. **Dependency mapping (DAG)**: Produce the Mermaid dependency graph (Section 1) and the linear execution order (Section 2). Only mark tasks `Parallel OK: Yes` if they touch disjoint file sets or the plan explicitly provides stable contracts/mocks. Otherwise default to sequential.
 
-5. Validate:
-   - Every functional requirement from `specs.md` has at least one task.
-   - Every task references a concrete file path from `plan.md`.
-   - No task is too vague for an LLM to execute without additional context.
+6. **Complexity estimation**: Assign Fibonacci complexity (1, 2, 3, 5, 8) to each task. Prefer smaller tasks over oversized ones. If a task exceeds ~1 day engineering risk, split it by vertical slice (e.g., API vs controller vs tests) while preserving dependency edges.
 
-6. **GATE 4**: Present summary including total task count, tasks per user story, parallel opportunities, and suggested MVP scope. Ask for approval.
+7. **Section 3 — Task Manifest**: Produce the markdown table with exact columns: Task ID, Task Title, Assigned Agent, Phase, Depends On, Parallel OK, Complexity, Risk. Mark Risk as High for any task touching unverified items from `repo-assessment.md` Section 5.1.
+
+8. **Section 4 — Task Payloads**: For each task, produce the specification subsection with: Objective, Target file(s), Non-goals/forbidden edits, Implementation notes (non-code), Acceptance criteria (tracing to `specs.md` IDs), Downstream handoff. This payload is the context sent to the assigned execution agent.
+
+9. **Section 5 — Orchestration Notes**: Document retry boundaries (what can be retried safely), merge conflict hotspots (generated files, bindata, shared schemas), and open questions requiring SME input before specific tasks can execute.
+
+10. **GATE 4**: Present summary highlighting: total task count, tasks per phase, agent distribution, critical-path length (longest sequential chain), total complexity points, and any tasks marked `Evidence: PARTIAL`. Ask for approval.
 
 ---
 
@@ -325,28 +335,30 @@ Stage 3 produces a Technical Implementation Plan — a 9-section artifact (Secti
 2. Create a feature branch in the target repo (naming convention from `constitution.md`, or `feature/<jira-key>-<short-name>`).
 -->
 
-2. Execute tasks phase-by-phase from `tasks.md`:
-   - Complete each phase before moving to the next.
-   - Respect dependencies: sequential tasks in order, parallel `[P]` tasks can run together.
-   - For each completed task, mark it as `[x]` in `artifacts/tasks.md`.
+2. Execute tasks following the Linear Execution Order (`tasks.md` Section 2) or the Task Dependency Graph (`tasks.md` Section 1):
+   - For each task, read its Task Specification payload (`tasks.md` Section 4) for target files, acceptance criteria, non-goals, and implementation notes.
+   - Respect `Parallel OK` flags from the Task Execution Manifest (`tasks.md` Section 3). Only run tasks concurrently if marked `Parallel OK: Yes`.
+   - Respect `Depends On` columns — never start a task before its dependencies are complete.
+   - Reference Orchestration Notes (`tasks.md` Section 5) for retry boundaries and merge conflict hotspots.
    - Report progress after each completed phase.
 
 3. Implementation rules:
    - Follow code conventions from `constitution.md`.
    - Match existing patterns in the repository.
+   - Respect per-task Non-goals/forbidden edits from the Task Specification payload.
    - If a task fails, halt and report the error with context. Suggest a fix. Wait for user input before continuing.
 
 4. After all tasks are complete:
    - Run any test suites referenced in `constitution.md`.
-   - Verify the implementation matches the spec requirements.
+   - Verify the implementation matches the spec requirements and per-task acceptance criteria.
    <!-- TODO: Uncomment when ready to enable branch/PR creation
    - Commit changes with a descriptive message referencing the Jira ticket.
    - Create a draft pull request.
    -->
 
 5. Produce a final report:
-   - Tasks completed vs. planned.
-   - Files changed.
+   - Tasks completed vs. planned (reference Task IDs from the manifest).
+   - Files changed (cross-reference against Target file(s) from payloads).
    - Test results.
    <!-- TODO: Uncomment when ready to enable branch/PR creation
    - PR link.
