@@ -179,8 +179,10 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
 ## Stage 2: Repo Understanding
 
 **Input**: GitHub repo URL + approved `artifacts/specs.md`
-**Output**: `artifacts/constitution.md`
-**Template**: `templates/constitution-template.md`
+**Output**: `artifacts/constitution.md`, `artifacts/repo-assessment.md`
+**Templates**: `templates/constitution-template.md`, `templates/repo-assessment-template.md`
+
+Stage 2 produces two complementary artifacts. The **constitution** captures principles, conventions, and governance derived from the repo. The **repo assessment report** is a fact-based engineering inventory: which files to touch, which to read for context, what to reuse, what guardrails exist, and what risks Planning needs to account for.
 
 ### Process
 
@@ -215,19 +217,29 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
    - **Development Workflow**: Code review requirements, testing gates, deployment approval process as practiced in this repo.
    - **Governance**: How this constitution relates to the repo's existing AGENTS.md/CLAUDE.md/CONTRIBUTING.md.
 
-6. **GATE 2**: Present summary and ask for approval.
+6. Read `templates/repo-assessment-template.md` for the assessment report structure.
+
+7. Produce `artifacts/repo-assessment.md` following the template. Populate each section from the repo analysis already performed in steps 1-4. The assessment report is fact-based — no principles or governance, just an inventory of what exists, what to touch, what to reuse, and what the risks are:
+   - **Inputs & Tooling**: Record repo coordinates, branch/commit, and tooling depth (FULL or PARTIAL). State the single most important finding for Planning.
+   - **Target Files**: Every file the feature will modify or create, with rationale and evidence.
+   - **Reference Context**: Files to read for patterns but not modify.
+   - **Reusable Assets**: Existing code/patterns that must be reused rather than reimplemented.
+   - **Architectural Guardrails**: Hard constraints from the repo that the implementation must respect.
+   - **Risks & Downstream Impacts**: Cross-repo dependencies, upgrade concerns, CI blast radius, and any unverified items.
+
+8. **GATE 2**: Present summaries of **both** `constitution.md` and `repo-assessment.md` to the user. Highlight key principles from the constitution and the most important target files, reusable assets, and risks from the assessment. Ask for approval.
 
 ---
 
 ## Stage 3: Planning
 
-**Input**: Approved `artifacts/specs.md` + `artifacts/constitution.md`
+**Input**: Approved `artifacts/specs.md` + `artifacts/constitution.md` + `artifacts/repo-assessment.md`
 **Output**: `artifacts/plan.md`
 **Template**: `templates/plan-template.md`
 
 ### Process
 
-1. Read both approved artifacts and `templates/plan-template.md`.
+1. Read all three approved artifacts and `templates/plan-template.md`. Use `repo-assessment.md` to ground technical decisions: its Target Files inform the Project Structure section, its Reusable Assets prevent duplicate invention, its Architectural Guardrails constrain design choices, and its Risks feed into the research phase.
 
 2. Produce `artifacts/plan.md` following the template:
    - **Summary**: Primary requirement + technical approach.
@@ -247,13 +259,13 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
 
 ## Stage 4: Task Creation
 
-**Input**: Approved `artifacts/plan.md` + `artifacts/specs.md` + `artifacts/constitution.md`
+**Input**: Approved `artifacts/plan.md` + `artifacts/specs.md` + `artifacts/constitution.md` + `artifacts/repo-assessment.md`
 **Output**: `artifacts/tasks.md`
 **Template**: `templates/tasks-template.md`
 
 ### Process
 
-1. Read all three approved artifacts and `templates/tasks-template.md`.
+1. Read all four approved artifacts and `templates/tasks-template.md`. Use `repo-assessment.md` Target Files to ensure every task references concrete file paths, and its Risks section to flag tasks that touch unverified areas.
 
 2. Produce `artifacts/tasks.md` following the template structure and these rules:
 
@@ -290,7 +302,7 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
 
 ## Stage 5: Code Generation
 
-**Input**: All approved artifacts (`specs.md`, `constitution.md`, `plan.md`, `tasks.md`)
+**Input**: All approved artifacts (`specs.md`, `constitution.md`, `repo-assessment.md`, `plan.md`, `tasks.md`)
 **Output**: Code changes in the target repo
 <!-- TODO: Uncomment when ready to enable branch/PR creation
 **Output**: Code changes on a feature branch + draft PR
@@ -353,6 +365,7 @@ After producing the final report, read `.ambient/rubric.md` and evaluate the ove
 | 0. Spec Validation | `artifacts/validation.json` | `templates/validation-template.md` |
 | 1. Spec Understanding | `artifacts/specs.md` | `templates/spec-template.md` |
 | 2. Repo Understanding | `artifacts/constitution.md` | `templates/constitution-template.md` |
+| 2. Repo Understanding | `artifacts/repo-assessment.md` | `templates/repo-assessment-template.md` |
 | 3. Planning | `artifacts/plan.md` | `templates/plan-template.md` |
 | 4. Task Creation | `artifacts/tasks.md` | `templates/tasks-template.md` |
 | 5. Code Generation | Code changes in repo | - |

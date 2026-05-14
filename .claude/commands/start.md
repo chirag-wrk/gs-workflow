@@ -42,7 +42,7 @@ Follow Stage 0 from CLAUDE.md using **JIRA_KEY**. Write `artifacts/validation.js
 Follow Stage 1 from CLAUDE.md using **JIRA_KEY**. Write `artifacts/specs.md`. Present summary and ask for approval via AskUserQuestion. Wait for approval before proceeding.
 
 ### Stage 2: Repo Understanding
-Follow Stage 2 from CLAUDE.md using **REPO_URL**. Write `artifacts/constitution.md`. Present summary and ask for approval via AskUserQuestion. Wait for approval before proceeding.
+Follow Stage 2 from CLAUDE.md using **REPO_URL**. Write `artifacts/constitution.md` and `artifacts/repo-assessment.md`. Present summaries of both artifacts and ask for approval via AskUserQuestion. Wait for approval before proceeding.
 
 ### Stage 3: Planning
 Follow Stage 3 from CLAUDE.md. Write `artifacts/plan.md`. Present summary and ask for approval via AskUserQuestion. Wait for approval before proceeding.
