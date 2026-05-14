@@ -1,288 +1,200 @@
----
+# Execution Backlog
 
-description: "Task list template for feature implementation"
----
-
-# Tasks: [FEATURE NAME]
-
-**Input**: Design documents from `/specs/[###-feature-name]/`
-
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
-
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
-
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
-
-## Format: `[ID] [P?] [Story] Description`
-
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
-- **Maps to** (REQUIRED): On the line immediately after each task, add `**Maps to:** SC-01, AC-03` (use IDs from `spec.md`: FR-xx, SC-xx, AC-xx). Every acceptance criterion in the spec should appear on at least one task.
-
-## Path Conventions
-
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+**Feature:** [FEATURE_NAME]
+**AgentRoutingMode:** PROVIDED | PROVISIONAL
+**ConstitutionVersion:** [CONSTITUTION_LABEL_OR_UNKNOWN]
 
 <!--
-  ============================================================================
-  IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
+  This template is populated by the Sub-Task Creation Agent (Stage 4).
+  It produces an ordered execution backlog — NOT source code.
 
-  The __SPECKIT_COMMAND_TASKS__ command MUST replace these with actual tasks based on:
-  - User stories from spec.md (with their priorities P1, P2, P3...)
-  - Acceptance criteria and success criteria IDs from spec.md (trace every AC/SC to at least one task via **Maps to:**)
-  - Feature requirements from plan.md
-  - Entities from data-model.md
-  - Endpoints from contracts/
+  Inputs consumed:
+    - artifacts/specs.md (the "what")
+    - artifacts/plan.md (the "how" — phases, contracts, sequencing)
+    - artifacts/constitution.md (guardrails)
+    - artifacts/repo-assessment.md (file-path facts, reusable assets, risks)
+    - agents.md from target repo (the "who" — optional; if absent, use PROVISIONAL routing)
 
-  Tasks MUST be organized by user story so each story can be:
-  - Implemented independently
-  - Tested independently
-  - Delivered as an MVP increment
-
-  DO NOT keep these sample tasks in the generated tasks.md file.
-  ============================================================================
+  Input precedence on conflicts:
+    1) constitution.md  2) specs.md  3) plan.md  4) repo-assessment.md  5) agents.md
 -->
 
-## Phase 1: Setup (Shared Infrastructure)
+---
 
-**Purpose**: Project initialization and basic structure
+## 0. Input Coverage Checklist
 
-- [ ] T001 Create project structure per implementation plan
-  **Maps to:** FR-01
-- [ ] T002 Initialize [language] project with [framework] dependencies
-  **Maps to:** FR-01
-- [ ] T003 [P] Configure linting and formatting tools
-  **Maps to:** _foundational_
+<!--
+  ACTION REQUIRED: Map every spec goal and plan phase to at least one task.
+  This section proves nothing was dropped during decomposition.
+
+  Format: one bullet per spec requirement or plan phase, with the Task IDs
+  that cover it. Every FR-xx, SC-xx, and AC-xx from specs.md should appear.
+  Every phase from plan.md Section 5 should appear.
+-->
+
+- [SPEC_GOAL_OR_PLAN_PHASE]: covered by [TASK_IDS]
+<!-- Example: "FR-001 (TrustManager CR singleton enforcement): T1_1, T1_2" -->
+<!-- Example: "Plan Phase 3 (Controller reconcile): T3_1, T3_2, T3_3, T3_4" -->
+- [SPEC_GOAL_OR_PLAN_PHASE]: covered by [TASK_IDS]
+
+**Complexity scale**: Fibonacci integers — 1 (trivial), 2 (small), 3 (medium), 5 (large), 8 (extra-large, consider splitting).
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## 1. Task Dependency Graph (Mermaid)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+<!--
+  ACTION REQUIRED: Produce a Mermaid graph showing execution dependencies.
+  Use stable node IDs matching Task IDs in the manifest (T1_1, T1_2, etc.).
+  Group tasks into subgraphs by phase from plan.md.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+  Constraints:
+    - Keep under ~40 nodes. If larger, emit a phase-level summary DAG
+      plus a second detail subgraph for the critical path only.
+    - Only draw dependency edges where one task MUST complete before
+      another can start.
+    - Do NOT draw edges for tasks that are merely in the same phase
+      but can run in parallel.
+-->
 
-Examples of foundational tasks (adjust based on your project):
+```mermaid
+graph TD
+    subgraph phase1 [Phase 1: PHASE_NAME]
+        T1_1[Task 1.1: TITLE]
+        T1_2[Task 1.2: TITLE]
+        T1_1 --> T1_2
+    end
 
-- [ ] T004 Setup database schema and migrations framework
-  **Maps to:** FR-02, SC-01
-- [ ] T005 [P] Implement authentication/authorization framework
-  **Maps to:** AC-01, AC-02
-- [ ] T006 [P] Setup API routing and middleware structure
-  **Maps to:** FR-03
-- [ ] T007 Create base models/entities that all stories depend on
-  **Maps to:** FR-02
-- [ ] T008 Configure error handling and logging infrastructure
-  **Maps to:** NFR-01
-- [ ] T009 Setup environment configuration management
-  **Maps to:** NFR-02
-
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
-
----
-
-## Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP
-
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
-
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-  **Maps to:** AC-10
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
-  **Maps to:** AC-11
-
-### Implementation for User Story 1
-
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-  **Maps to:** AC-04
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-  **Maps to:** AC-04
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-  **Maps to:** AC-05, SC-02
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-  **Maps to:** AC-06
-- [ ] T016 [US1] Add validation and error handling
-  **Maps to:** AC-07
-- [ ] T017 [US1] Add logging for user story 1 operations
-  **Maps to:** NFR-01
-
-**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
-
----
-
-## Phase 4: User Story 2 - [Title] (Priority: P2)
-
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-  **Maps to:** AC-20
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
-  **Maps to:** AC-21
-
-### Implementation for User Story 2
-
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-  **Maps to:** AC-22
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-  **Maps to:** AC-23
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-  **Maps to:** AC-24
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
-  **Maps to:** AC-25
-
-**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
-
----
-
-## Phase 5: User Story 3 - [Title] (Priority: P3)
-
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-  **Maps to:** AC-30
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
-  **Maps to:** AC-31
-
-### Implementation for User Story 3
-
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-  **Maps to:** AC-32
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-  **Maps to:** AC-33
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
-  **Maps to:** AC-34
-
-**Checkpoint**: All user stories should now be independently functional
-
----
-
-[Add more user story phases as needed, following the same pattern]
-
----
-
-## Phase N: Polish & Cross-Cutting Concerns
-
-**Purpose**: Improvements that affect multiple user stories
-
-- [ ] TXXX [P] Documentation updates in docs/
-  **Maps to:** SC-03
-- [ ] TXXX Code cleanup and refactoring
-  **Maps to:** NFR-03
-- [ ] TXXX Performance optimization across all stories
-  **Maps to:** SC-01, NFR-04
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-  **Maps to:** AC-99
-- [ ] TXXX Security hardening
-  **Maps to:** NFR-05
-- [ ] TXXX Run quickstart.md validation
-  **Maps to:** AC-98
-
----
-
-## Dependencies & Execution Order
-
-### Phase Dependencies
-
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3+)**: All depend on Foundational phase completion
-  - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
-
-### User Story Dependencies
-
-- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
-- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - May integrate with US1 but should be independently testable
-- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - May integrate with US1/US2 but should be independently testable
-
-### Within Each User Story
-
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
-- Services before endpoints
-- Core implementation before integration
-- Story complete before moving to next priority
-
-### Parallel Opportunities
-
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
-- All tests for a user story marked [P] can run in parallel
-- Models within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
-
----
-
-## Parallel Example: User Story 1
-
-```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
-
-# Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
+    subgraph phase2 [Phase 2: PHASE_NAME]
+        T2_1[Task 2.1: TITLE]
+        T2_2[Task 2.2: TITLE]
+        T1_2 --> T2_1
+        T1_2 --> T2_2
+    end
 ```
 
 ---
 
-## Implementation Strategy
+## 2. Linear Execution Order
 
-### MVP First (User Story 1 Only)
+<!--
+  ACTION REQUIRED: List all Task IDs in a valid topological order.
+  This is the fallback execution sequence for engines that do not
+  support DAG scheduling. Ties are broken by phase order from plan.md.
 
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
-3. Complete Phase 3: User Story 1
-4. **STOP and VALIDATE**: Test User Story 1 independently
-5. Deploy/demo if ready
+  Format: numbered list with Task ID and brief title.
+-->
 
-### Incremental Delivery
-
-1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
-3. Add User Story 2 → Test independently → Deploy/Demo
-4. Add User Story 3 → Test independently → Deploy/Demo
-5. Each story adds value without breaking previous stories
-
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: User Story 1
-   - Developer B: User Story 2
-   - Developer C: User Story 3
-3. Stories complete and integrate independently
+1. T1_1 — [TITLE]
+2. T1_2 — [TITLE]
+3. T2_1 — [TITLE]
+4. T2_2 — [TITLE]
 
 ---
 
-## Notes
+## 3. Task Execution Manifest
 
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- Verify tests fail before implementing
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+<!--
+  ACTION REQUIRED: Produce a markdown table with EXACT columns below.
+  Every task from the DAG must appear here. No extra columns, no missing columns.
+
+  Column definitions:
+    Task ID       — Stable ID matching DAG nodes (T1_1, T1_2, ...)
+    Task Title    — Short imperative description
+    Assigned Agent — Agent ID from agents.md (or provisional ID if PROVISIONAL mode)
+    Phase         — Phase name from plan.md Section 5
+    Depends On    — Comma-separated Task IDs that must complete first (or "none")
+    Parallel OK   — Yes/No; Yes only if this task touches disjoint files from
+                    all tasks it could run alongside
+    Complexity    — Fibonacci integer (1,2,3,5,8)
+    Risk          — Low/Medium/High; High if Evidence: PARTIAL or touches
+                    unverified items from repo-assessment.md Section 5.1
+
+  Provisional agent IDs (use when AgentRoutingMode is PROVISIONAL):
+    API_Agent, OperatorController_Agent, ManifestsBindata_Agent,
+    WebhookTLS_Agent, RBACSecurity_Agent, OLMRelease_Agent,
+    Testing_Agent, Docs_Agent
+-->
+
+| Task ID | Task Title | Assigned Agent | Phase | Depends On | Parallel OK | Complexity | Risk |
+|---------|-----------|---------------|-------|-----------|------------|-----------|------|
+| T1_1 | [TITLE] | [AGENT_ID] | [PHASE] | none | No | [1-8] | [Low/Med/High] |
+| T1_2 | [TITLE] | [AGENT_ID] | [PHASE] | T1_1 | No | [1-8] | [Low/Med/High] |
+
+---
+
+## 4. Task Specifications (Payloads)
+
+<!--
+  ACTION REQUIRED: For EACH Task ID in the manifest, produce a subsection
+  below. This is the context payload sent to the assigned execution agent
+  when the task is triggered. It must contain enough information for the
+  agent to execute the task without re-reading the full plan.
+
+  Per-task fields:
+    Objective          — What the task accomplishes (1-2 sentences)
+    Target file(s)     — From repo-assessment.md / plan.md only; do NOT invent paths
+    Non-goals          — What this task must NOT touch (from constitution + plan guardrails)
+    Implementation notes — Non-code constraints, patterns to follow, conventions to match
+    Acceptance criteria — Must trace to specs.md IDs (FR-xx, SC-xx, AC-xx)
+    Downstream handoff — What artifacts/state the next task expects from this one
+
+  If repo_assessment was PARTIAL and file paths are uncertain, mark
+  "Evidence: PARTIAL" and include a discovery step in the objective.
+-->
+
+### Task T1_1: [TITLE]
+
+- **Objective:** [WHAT_THIS_TASK_ACCOMPLISHES]
+- **Target file(s):** [FILE_PATHS_FROM_REPO_ASSESSMENT_OR_PLAN]
+- **Non-goals / forbidden edits:** [WHAT_NOT_TO_TOUCH]
+- **Implementation notes:** [NON_CODE_CONSTRAINTS_AND_PATTERNS]
+- **Acceptance criteria:** [TRACES_TO_SPECS_MD_IDS]
+- **Downstream handoff:** [WHAT_NEXT_TASK_EXPECTS]
+
+---
+
+### Task T1_2: [TITLE]
+
+- **Objective:** [WHAT_THIS_TASK_ACCOMPLISHES]
+- **Target file(s):** [FILE_PATHS_FROM_REPO_ASSESSMENT_OR_PLAN]
+- **Non-goals / forbidden edits:** [WHAT_NOT_TO_TOUCH]
+- **Implementation notes:** [NON_CODE_CONSTRAINTS_AND_PATTERNS]
+- **Acceptance criteria:** [TRACES_TO_SPECS_MD_IDS]
+- **Downstream handoff:** [WHAT_NEXT_TASK_EXPECTS]
+
+---
+
+<!-- Add more Task subsections as needed, one per Task ID in the manifest -->
+
+---
+
+## 5. Orchestration Notes
+
+<!--
+  ACTION REQUIRED: Provide operational guidance for the execution engine
+  and human reviewers. This section does NOT contain tasks — it contains
+  meta-information about how to safely execute the backlog.
+-->
+
+### Retry Boundaries
+
+<!-- Which tasks can be safely retried without side effects, and which
+     require cleanup or rollback if they fail mid-execution? -->
+
+- [RETRY_GUIDANCE]
+
+### Merge Conflict Hotspots
+
+<!-- Which files are touched by multiple tasks or are auto-generated
+     (e.g., zz_generated.deepcopy.go, bindata/, CRD YAML)? These
+     require sequential execution or a post-merge regeneration step. -->
+
+- [HOTSPOT_FILES_AND_MITIGATION]
+
+### Open Questions Requiring SME Before Execution
+
+<!-- Any unresolved items from plan.md Section 8 or repo-assessment.md
+     Section 5.1 that must be answered before specific tasks can proceed. -->
+
+- [OPEN_QUESTION]: blocks [TASK_IDS]
