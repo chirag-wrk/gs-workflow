@@ -179,8 +179,10 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
 ## Stage 2: Repo Understanding
 
 **Input**: GitHub repo URL + approved `artifacts/specs.md`
-**Output**: `artifacts/constitution.md`
-**Template**: `templates/constitution-template.md`
+**Output**: `artifacts/constitution.md`, `artifacts/repo-assessment.md`
+**Templates**: `templates/constitution-template.md`, `templates/repo-assessment-template.md`
+
+Stage 2 produces two complementary artifacts. The **constitution** captures principles, conventions, and governance derived from the repo. The **repo assessment report** is a fact-based engineering inventory: which files to touch, which to read for context, what to reuse, what guardrails exist, and what risks Planning needs to account for.
 
 ### Process
 
@@ -215,45 +217,64 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
    - **Development Workflow**: Code review requirements, testing gates, deployment approval process as practiced in this repo.
    - **Governance**: How this constitution relates to the repo's existing AGENTS.md/CLAUDE.md/CONTRIBUTING.md.
 
-6. **GATE 2**: Present summary and ask for approval.
+6. Read `templates/repo-assessment-template.md` for the assessment report structure.
+
+7. Produce `artifacts/repo-assessment.md` following the template. Populate each section from the repo analysis already performed in steps 1-4. The assessment report is fact-based — no principles or governance, just an inventory of what exists, what to touch, what to reuse, and what the risks are:
+   - **Inputs & Tooling**: Record repo coordinates, branch/commit, and tooling depth (FULL or PARTIAL). State the single most important finding for Planning.
+   - **Target Files**: Every file the feature will modify or create, with rationale and evidence.
+   - **Reference Context**: Files to read for patterns but not modify.
+   - **Reusable Assets**: Existing code/patterns that must be reused rather than reimplemented.
+   - **Architectural Guardrails**: Hard constraints from the repo that the implementation must respect.
+   - **Risks & Downstream Impacts**: Cross-repo dependencies, upgrade concerns, CI blast radius, and any unverified items.
+
+8. **GATE 2**: Present summaries of **both** `constitution.md` and `repo-assessment.md` to the user. Highlight key principles from the constitution and the most important target files, reusable assets, and risks from the assessment. Ask for approval.
 
 ---
 
 ## Stage 3: Planning
 
-**Input**: Approved `artifacts/specs.md` + `artifacts/constitution.md`
+**Input**: Approved `artifacts/specs.md` + `artifacts/constitution.md` + `artifacts/repo-assessment.md`
 **Output**: `artifacts/plan.md`
 **Template**: `templates/plan-template.md`
 
+Stage 3 produces a Technical Implementation Plan — a 9-section artifact (Sections 0-8) that bridges spec requirements and repo reality into an architecture-level blueprint. The plan covers inputs, strategy, state model, interface contracts, dependency sequencing, implementation phases, verification mapping, risks, and open questions. Phases are architecture-level groupings, not individual tasks — task granularity is Stage 4's job.
+
 ### Process
 
-1. Read both approved artifacts and `templates/plan-template.md`.
+1. Read all three approved artifacts (`artifacts/specs.md`, `artifacts/constitution.md`, `artifacts/repo-assessment.md`) and `templates/plan-template.md`.
 
-2. Produce `artifacts/plan.md` following the template:
-   - **Summary**: Primary requirement + technical approach.
-   - **Technical Context**: Language/version, dependencies, storage, testing framework, target platform, project type, performance goals, constraints, scale - derived from `constitution.md`.
-   - **Constitution Check**: Validate the plan against each principle in `constitution.md`. If any principle is violated, document the justification in the Complexity Tracking table.
-   - **Project Structure**: Concrete file/directory layout for this feature, matching the repo's existing structure from `constitution.md`.
+2. **Section 0 — Inputs Acknowledged**: Record every upstream artifact the plan depends on. Extract the repo assessment pin (repo/branch/commit/tooling_status) from `repo-assessment.md` Section 0. Note the constitution status (provided vs placeholder). If `constitution.md` uses placeholder rules, list the provisional guardrails assumed.
 
-3. Execute planning phases:
-   - **Phase 0 - Research**: For each NEEDS CLARIFICATION or unknown in the Technical Context, research and resolve it. Produce findings as decisions with rationale and alternatives considered. Write these into the plan.
-   - **Phase 1 - Design**: Extract entities from the spec into a data model section. Define interface contracts appropriate to the project type. Document the architecture decisions.
+3. **Section 1 — Architectural Strategy**: Synthesize the high-level approach from spec requirements, constrained by constitution principles and repo assessment guardrails (Sections 3-4). Write a "Repo-grounded reality check" paragraph that cross-references the `repo-assessment.md` Key Finding for Planning to determine whether this is greenfield work, delta/hardening work, or a mix.
 
-4. Every technical decision must trace back to either the spec requirements or the constitution principles. No orphan decisions.
+4. **Section 2 — Persistence & State**: Extract the state model from spec requirements and repo assessment target files. For Kubernetes operators: list objects as source-of-truth vs derived/reconciled, external/platform-injected state, and runtime state. For non-stateful features, mark as N/A with a brief explanation.
 
-5. **GATE 3**: Present summary and ask for approval.
+5. **Section 3 — Interfaces & Contracts**: Define every interface boundary that downstream tasks must implement. Only include applicable subsections (APIs, Controller/Runtime, Webhooks/Admission, RBAC/Security, Packaging/Distribution). Derive contract details from spec functional requirements and repo assessment target files and reference context.
+
+6. **Section 4 — Dependencies & Sequencing Graph**: Derive the critical path from spec dependencies and repo assessment risks. Identify parallelizable streams and external dependencies. This sequencing drives Phase ordering in Section 5.
+
+7. **Section 5 — Implementation Phases**: Break the strategy into logical phases. Each phase must have: Goal, Dependencies, Target Files (from `repo-assessment.md` Section 1), Required Capabilities (provisional until agents.md is provided), and Verification Hooks (from constitution or repo conventions). Phases are numbered sequentially.
+
+8. **Sections 6-8 — Verification, Risks, Open Questions**:
+   - **Section 6 — Verification Matrix**: Map spec acceptance criteria to test categories (Unit, Integration, E2E, Manual/Cluster, N/A) with file/suite references from the repo assessment.
+   - **Section 7 — Risks, Migrations & Operational Follow-ups**: Surface risks from `repo-assessment.md` Section 5, spec gaps, and any areas where constitution principles are strained. Each risk has a name and description.
+   - **Section 8 — Open Questions / SME Decisions**: List decisions the plan cannot make alone. State who can answer, and what the plan assumes if no answer arrives before Stage 4.
+
+9. **Traceability validation**: Every architectural decision must trace to a spec requirement or constitution principle. Every risk must trace to a repo assessment finding or spec gap. No orphan decisions.
+
+10. **GATE 3**: Present summary highlighting the architectural strategy, number of implementation phases, critical-path dependencies, top 3 risks, and any open questions that need SME input before task creation. Ask for approval.
 
 ---
 
 ## Stage 4: Task Creation
 
-**Input**: Approved `artifacts/plan.md` + `artifacts/specs.md` + `artifacts/constitution.md`
+**Input**: Approved `artifacts/plan.md` + `artifacts/specs.md` + `artifacts/constitution.md` + `artifacts/repo-assessment.md`
 **Output**: `artifacts/tasks.md`
 **Template**: `templates/tasks-template.md`
 
 ### Process
 
-1. Read all three approved artifacts and `templates/tasks-template.md`.
+1. Read all four approved artifacts and `templates/tasks-template.md`. Use `repo-assessment.md` Target Files to ensure every task references concrete file paths, and its Risks section to flag tasks that touch unverified areas.
 
 2. Produce `artifacts/tasks.md` following the template structure and these rules:
 
@@ -290,7 +311,7 @@ On NEEDS_REVISION or BLOCKED, after presenting results, ask "Comment on Jira tic
 
 ## Stage 5: Code Generation
 
-**Input**: All approved artifacts (`specs.md`, `constitution.md`, `plan.md`, `tasks.md`)
+**Input**: All approved artifacts (`specs.md`, `constitution.md`, `repo-assessment.md`, `plan.md`, `tasks.md`)
 **Output**: Code changes in the target repo
 <!-- TODO: Uncomment when ready to enable branch/PR creation
 **Output**: Code changes on a feature branch + draft PR
@@ -353,6 +374,7 @@ After producing the final report, read `.ambient/rubric.md` and evaluate the ove
 | 0. Spec Validation | `artifacts/validation.json` | `templates/validation-template.md` |
 | 1. Spec Understanding | `artifacts/specs.md` | `templates/spec-template.md` |
 | 2. Repo Understanding | `artifacts/constitution.md` | `templates/constitution-template.md` |
+| 2. Repo Understanding | `artifacts/repo-assessment.md` | `templates/repo-assessment-template.md` |
 | 3. Planning | `artifacts/plan.md` | `templates/plan-template.md` |
 | 4. Task Creation | `artifacts/tasks.md` | `templates/tasks-template.md` |
 | 5. Code Generation | Code changes in repo | - |

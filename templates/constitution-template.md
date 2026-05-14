@@ -1,3 +1,4 @@
+<!-- Companion artifact: artifacts/repo-assessment.md (target files, reusable assets, risks) -->
 # [PROJECT_NAME] Constitution
 <!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
 
