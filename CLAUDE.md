@@ -237,23 +237,32 @@ Stage 2 produces two complementary artifacts. The **constitution** captures prin
 **Output**: `artifacts/plan.md`
 **Template**: `templates/plan-template.md`
 
+Stage 3 produces a Technical Implementation Plan — a 9-section artifact (Sections 0-8) that bridges spec requirements and repo reality into an architecture-level blueprint. The plan covers inputs, strategy, state model, interface contracts, dependency sequencing, implementation phases, verification mapping, risks, and open questions. Phases are architecture-level groupings, not individual tasks — task granularity is Stage 4's job.
+
 ### Process
 
-1. Read all three approved artifacts and `templates/plan-template.md`. Use `repo-assessment.md` to ground technical decisions: its Target Files inform the Project Structure section, its Reusable Assets prevent duplicate invention, its Architectural Guardrails constrain design choices, and its Risks feed into the research phase.
+1. Read all three approved artifacts (`artifacts/specs.md`, `artifacts/constitution.md`, `artifacts/repo-assessment.md`) and `templates/plan-template.md`.
 
-2. Produce `artifacts/plan.md` following the template:
-   - **Summary**: Primary requirement + technical approach.
-   - **Technical Context**: Language/version, dependencies, storage, testing framework, target platform, project type, performance goals, constraints, scale - derived from `constitution.md`.
-   - **Constitution Check**: Validate the plan against each principle in `constitution.md`. If any principle is violated, document the justification in the Complexity Tracking table.
-   - **Project Structure**: Concrete file/directory layout for this feature, matching the repo's existing structure from `constitution.md`.
+2. **Section 0 — Inputs Acknowledged**: Record every upstream artifact the plan depends on. Extract the repo assessment pin (repo/branch/commit/tooling_status) from `repo-assessment.md` Section 0. Note the constitution status (provided vs placeholder). If `constitution.md` uses placeholder rules, list the provisional guardrails assumed.
 
-3. Execute planning phases:
-   - **Phase 0 - Research**: For each NEEDS CLARIFICATION or unknown in the Technical Context, research and resolve it. Produce findings as decisions with rationale and alternatives considered. Write these into the plan.
-   - **Phase 1 - Design**: Extract entities from the spec into a data model section. Define interface contracts appropriate to the project type. Document the architecture decisions.
+3. **Section 1 — Architectural Strategy**: Synthesize the high-level approach from spec requirements, constrained by constitution principles and repo assessment guardrails (Sections 3-4). Write a "Repo-grounded reality check" paragraph that cross-references the `repo-assessment.md` Key Finding for Planning to determine whether this is greenfield work, delta/hardening work, or a mix.
 
-4. Every technical decision must trace back to either the spec requirements or the constitution principles. No orphan decisions.
+4. **Section 2 — Persistence & State**: Extract the state model from spec requirements and repo assessment target files. For Kubernetes operators: list objects as source-of-truth vs derived/reconciled, external/platform-injected state, and runtime state. For non-stateful features, mark as N/A with a brief explanation.
 
-5. **GATE 3**: Present summary and ask for approval.
+5. **Section 3 — Interfaces & Contracts**: Define every interface boundary that downstream tasks must implement. Only include applicable subsections (APIs, Controller/Runtime, Webhooks/Admission, RBAC/Security, Packaging/Distribution). Derive contract details from spec functional requirements and repo assessment target files and reference context.
+
+6. **Section 4 — Dependencies & Sequencing Graph**: Derive the critical path from spec dependencies and repo assessment risks. Identify parallelizable streams and external dependencies. This sequencing drives Phase ordering in Section 5.
+
+7. **Section 5 — Implementation Phases**: Break the strategy into logical phases. Each phase must have: Goal, Dependencies, Target Files (from `repo-assessment.md` Section 1), Required Capabilities (provisional until agents.md is provided), and Verification Hooks (from constitution or repo conventions). Phases are numbered sequentially.
+
+8. **Sections 6-8 — Verification, Risks, Open Questions**:
+   - **Section 6 — Verification Matrix**: Map spec acceptance criteria to test categories (Unit, Integration, E2E, Manual/Cluster, N/A) with file/suite references from the repo assessment.
+   - **Section 7 — Risks, Migrations & Operational Follow-ups**: Surface risks from `repo-assessment.md` Section 5, spec gaps, and any areas where constitution principles are strained. Each risk has a name and description.
+   - **Section 8 — Open Questions / SME Decisions**: List decisions the plan cannot make alone. State who can answer, and what the plan assumes if no answer arrives before Stage 4.
+
+9. **Traceability validation**: Every architectural decision must trace to a spec requirement or constitution principle. Every risk must trace to a repo assessment finding or spec gap. No orphan decisions.
+
+10. **GATE 3**: Present summary highlighting the architectural strategy, number of implementation phases, critical-path dependencies, top 3 risks, and any open questions that need SME input before task creation. Ask for approval.
 
 ---
 
